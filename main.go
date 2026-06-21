@@ -1,0 +1,230 @@
+package main
+
+import (
+    "database/sql"
+    "embed"
+    "flag"
+    "fmt"
+    "html/template"
+    "log"
+    "net/http"
+    "os"
+    "strings"
+    "time"
+
+    _ "modernc.org/sqlite"
+)
+
+//go:embed templates/*.html
+var templatesFS embed.FS
+
+var db *sql.DB
+var dbPath string
+
+type Message struct {
+    ID        int
+    Team      string
+    FromAgent string
+    ToAgent   string
+    Body      string
+    CreatedAt string
+    FullTime  string
+    ShortTime string
+    IsRight   bool
+}
+
+var tpl = template.Must(template.New("msg").Funcs(template.FuncMap{
+    "upper":       strings.ToUpper,
+    "avatarColor": avatarColor,
+    "slice": func(s string, start, end int) string {
+        if start >= len(s) {
+            return ""
+        }
+        if end > len(s) {
+            end = len(s)
+        }
+        return s[start:end]
+    },
+}).ParseFS(templatesFS, "templates/message.html"))
+
+func main() {
+    flag.Usage = func() {
+        fmt.Printf("Usage of %s:\n", os.Args[0])
+        fmt.Println("  -db string")
+        fmt.Println("    \tPath to SQLite database file (default \"messages.db\")")
+        fmt.Println("  -port int")
+        fmt.Println("    \tPort to run the server on (default 8080)")
+        fmt.Println("  -tail int")
+        fmt.Println("    \tNumber of latest messages to display initially (0 for all) (default 40)")
+        fmt.Println("  -team string")
+        fmt.Println("    \tInitial team to select on load")
+    }
+
+    dbPathFlag := flag.String("db", "messages.db", "Path to SQLite database file")
+    port := flag.Int("port", 8080, "Port to run the server on")
+    tail := flag.Int("tail", 40, "Number of latest messages to display initially (0 for all)")
+    initialTeam := flag.String("team", "", "Initial team to select on load")
+    flag.Parse()
+
+    dbPath = *dbPathFlag
+    dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)", dbPath)
+    var err error
+    db, err = sql.Open("sqlite", dsn)
+    if err != nil {
+        log.Fatalf("Failed to open database: %v", err)
+    }
+    defer db.Close()
+
+    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        indexHandler(w, r, *initialTeam)
+    })
+    http.HandleFunc("/api/messages", func(w http.ResponseWriter, r *http.Request) {
+        messagesHandler(w, r, *tail)
+    })
+    http.HandleFunc("/api/messages/partial", partialMessagesHandler)
+
+    log.Printf("Server starting on http://localhost:%d (tail: %d)", *port, *tail)
+    log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), nil))
+}
+
+func indexHandler(w http.ResponseWriter, r *http.Request, initialTeam string) {
+    rows, err := db.Query("SELECT DISTINCT team FROM messages ORDER BY team ASC")
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    var teams []string
+    for rows.Next() {
+        var t string
+        if err := rows.Scan(&t); err == nil {
+            teams = append(teams, t)
+            log.Printf("Found team: %s", t)
+        }
+    }
+
+    t, err := template.ParseFS(templatesFS, "templates/index.html")
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    t.Execute(w, struct{ Teams []string; InitialTeam string }{Teams: teams, InitialTeam: initialTeam})
+}
+
+func messagesHandler(w http.ResponseWriter, r *http.Request, limit int) {
+    team := r.URL.Query().Get("team")
+    if team == "" {
+        return
+    }
+
+    messages := fetchMessages(team, 0, limit)
+    w.Header().Set("Content-Type", "text/html; charset=utf-8")
+    tpl.Execute(w, messages)
+}
+
+func partialMessagesHandler(w http.ResponseWriter, r *http.Request) {
+    team := r.URL.Query().Get("team")
+    lastIDStr := r.URL.Query().Get("last_id")
+
+    if team == "" {
+        return
+    }
+
+    var lastID int
+    fmt.Sscanf(lastIDStr, "%d", &lastID)
+
+    messages := fetchMessages(team, lastID, 0)
+    if len(messages) > 0 {
+        w.Header().Set("Content-Type", "text/html; charset=utf-8")
+        tpl.Execute(w, messages)
+    }
+}
+
+func fetchMessages(team string, lastID int, limit int) []Message {
+    var query string
+    var args []interface{}
+
+    if lastID == 0 && limit > 0 {
+        query = `
+            SELECT id, team, from_agent, to_agent, body, created_at FROM (
+                SELECT id, team, from_agent, to_agent, body, created_at
+                FROM messages
+                WHERE team = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+            ) AS sub
+            ORDER BY created_at ASC
+        `
+        args = []interface{}{team, limit}
+    } else {
+        query = `
+            SELECT id, team, from_agent, to_agent, body, created_at
+            FROM messages
+            WHERE team = ?
+        `
+        args = []interface{}{team}
+
+        if lastID > 0 {
+            query += " AND id > ?"
+            args = append(args, lastID)
+        }
+        query += " ORDER BY created_at ASC"
+    }
+
+    rows, err := db.Query(query, args...)
+    if err != nil {
+        log.Printf("Error querying messages for team %s: %v", team, err)
+        return nil
+    }
+    defer rows.Close()
+
+    var messages []Message
+    for rows.Next() {
+        var m Message
+        if err := rows.Scan(&m.ID, &m.Team, &m.FromAgent, &m.ToAgent, &m.Body, &m.CreatedAt); err != nil {
+            continue
+        }
+        m.FullTime, m.ShortTime = formatISOTime(m.CreatedAt)
+        sum := 0
+        for _, c := range m.FromAgent {
+            sum += int(c)
+        }
+        m.IsRight = (sum % 2 == 0)
+        messages = append(messages, m)
+    }
+    return messages
+}
+
+func formatISOTime(iso string) (string, string) {
+    var t time.Time
+    var err error
+
+    if t, err = time.Parse(time.RFC3339, iso); err != nil {
+        if t, err = time.Parse("2006-01-02 15:04:05", iso); err != nil {
+            if t, err = time.Parse("2006-01-02T15:04:05", iso); err != nil {
+                return iso, iso
+            }
+        }
+    }
+
+    local := t.Local()
+    return local.Format("2006-01-02 15:04:05"), local.Format("15:04:05")
+}
+
+func avatarColor(name string) string {
+    colors := []string{
+        "bg-red-500", "bg-orange-500", "bg-amber-500", "bg-yellow-500",
+        "bg-lime-500", "bg-green-500", "bg-emerald-500", "bg-teal-500",
+        "bg-cyan-500", "bg-sky-500", "bg-blue-500", "bg-indigo-500",
+        "bg-violet-500", "bg-purple-500", "bg-fuchsia-500", "bg-pink-500",
+    }
+    if len(name) == 0 {
+        return colors[0]
+    }
+    sum := 0
+    for _, c := range name {
+        sum += int(c)
+    }
+    return colors[sum%len(colors)]
+}

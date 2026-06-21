@@ -1,0 +1,32 @@
+{{define "msg"}}
+{{range .}}
+<div class="message-row mb-4" data-id="{{.ID}}">
+  {{if .IsRight}}
+  <div class="flex justify-end items-end mr-0">
+    <div class="flex flex-col items-end mr-1.5">
+      <span class="text-[10px] text-gray-200 whitespace-nowrap" title="{{.FullTime}}">{{.ShortTime}}</span>
+    </div>
+    <div class="flex items-end gap-2">
+      <div class="bg-[#85e249] text-black p-2.5 rounded-2xl rounded-tr-none max-w-xs shadow-sm whitespace-pre-wrap break-words">{{- .Body -}}</div>
+      <div class="w-8 h-8 rounded-full flex-shrink-0 shadow flex items-center justify-center text-white font-bold text-xs {{avatarColor .FromAgent}}">
+        {{slice .FromAgent 0 1 | upper}}
+      </div>
+    </div>
+  </div>
+  {{else}}
+  <div class="flex items-start ml-4">
+    <div class="w-10 h-10 rounded-full mr-2 flex-shrink-0 shadow flex items-center justify-center text-white font-bold text-sm {{avatarColor .FromAgent}}">
+      {{slice .FromAgent 0 1 | upper}}
+    </div>
+    <div>
+      <div class="text-xs text-white mb-1">{{.FromAgent}}{{if .ToAgent}} <span class="text-gray-200 font-normal">(To: {{.ToAgent}})</span>{{end}}</div>
+      <div class="flex items-end">
+        <div class="bg-[#ffffff] text-black p-2.5 rounded-2xl rounded-tl-none max-w-xs shadow-sm whitespace-pre-wrap break-words">{{- .Body -}}</div>
+        <span class="text-[10px] text-gray-200 ml-1.5 whitespace-nowrap" title="{{.FullTime}}">{{.ShortTime}}</span>
+      </div>
+    </div>
+  </div>
+  {{end}}
+</div>
+{{end}}
+{{end}}

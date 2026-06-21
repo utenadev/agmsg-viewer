@@ -1,0 +1,26 @@
+# Binaries
+agmsg-viewer
+agmsg-viewer-win.exe
+agmsg-viewer-linux
+agmsg-viewer-mac
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Go
+vendor/
+*.exe
+*.test
+*.out
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
+QWEN.md
+
+.qwen/
+
+.github/

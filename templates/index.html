@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agmsg Viewer (LINE風)</title>
+    <!-- htmx -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+    </style>
+</head>
+<body class="m-0 p-0 flex flex-col h-screen">
+
+<!-- Header -->
+<header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-6 shadow-sm sticky top-0 z-10">
+    <h1 class="text-xl font-bold text-gray-800">Agmsg Viewer</h1>
+    <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-600">Team:</label>
+        <select id="teamSelect" 
+                hx-get="/api/messages" 
+                hx-target="#chatBox" 
+                hx-swap="innerHTML"
+                name="team"
+                class="px-3 py-1.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Select Team</option>
+            {{range .Teams}}
+            <option value="{{.}}" {{if eq . $.InitialTeam}}selected{{end}}>{{.}}</option>
+            {{end}}
+        </select>
+    </div>
+</header>
+
+<!-- Chat Container (LINE風背景色) -->
+<main class="flex-1 overflow-y-auto bg-[#7493c0] font-sans text-sm">
+    <div id="chatBox"
+         hx-get="/api/messages/partial"
+         hx-trigger="every 15s"
+         hx-swap="beforeend"
+         class="flex flex-col h-full py-4">
+        <div class="text-center text-white mt-20">
+            <p class="font-semibold">チームを選択してください</p>
+        </div>
+    </div>
+</main>
+
+<script>
+    // チーム選択時にCookieを保存
+    document.getElementById('teamSelect').addEventListener('change', function(e) {
+        const team = e.target.value;
+        document.cookie = "selected_team=" + encodeURIComponent(team) + "; path=/; max-age=2592000"; // 30日間有効
+    });
+
+    // htmxがリクエストを送信する直前に呼ばれるイベント
+    document.body.addEventListener('htmx:configRequest', function(evt) {
+        if (evt.detail.path.includes('/api/messages/partial')) {
+            const team = document.getElementById('teamSelect').value;
+            evt.detail.parameters['team'] = team;
+            
+            const messages = document.querySelectorAll('.message-row');
+            if (messages.length > 0) {
+                evt.detail.parameters['last_id'] = messages[messages.length - 1].dataset.id;
+            } else {
+                evt.detail.parameters['last_id'] = 0;
+            }
+        }
+    });
+
+    // ポーリングが成功した後に呼ばれるイベント（自動スクロール用）
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        if (evt.detail.successful && evt.detail.path.includes('/api/messages')) {
+            const main = document.querySelector('main');
+            main.scrollTo({ top: main.scrollHeight, behavior: 'smooth' });
+        }
+    });
+
+    // 初期ロード時にチームが選択されていれば自動的にメッセージを取得
+    window.addEventListener('DOMContentLoaded', () => {
+        const teamSelect = document.getElementById('teamSelect');
+        if (teamSelect.value) {
+            htmx.trigger(teamSelect, 'change');
+        }
+    });
+</script>
+
+</body>
+</html>

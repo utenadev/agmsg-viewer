@@ -1,0 +1,68 @@
+version: "3"
+tasks:
+  default:
+    desc: Build and run the application
+    cmds:
+      - task: build
+      - ./agmsg-viewer -db messages.db
+
+  build:
+    desc: Build the Go binary for current platform
+    cmds:
+      - go build -o agmsg-viewer main.go
+
+  run:
+    desc: Run the application without building first (using go run)
+    cmds:
+      - go run main.go -db messages.db
+
+  build:win:
+    desc: Build for Windows (amd64)
+    cmds:
+      - GOOS=windows GOARCH=amd64 go build -o agmsg-viewer-win.exe main.go
+
+  build:linux:
+    desc: Build for Linux (amd64)
+    cmds:
+      - GOOS=linux GOARCH=amd64 go build -o agmsg-viewer-linux main.go
+
+  build:mac:
+    desc: Build for macOS (arm64)
+    cmds:
+      - GOOS=darwin GOARCH=arm64 go build -o agmsg-viewer-mac main.go
+
+  test:
+    desc: Run Go tests
+    cmds:
+      - go test ./...
+
+  fmt:
+    desc: Format the Go code
+    cmds:
+      - go fmt ./...
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run
+
+  semgrep:
+    desc: Run semgrep static analysis
+    cmds:
+      - uv run --with semgrep semgrep scan --config auto
+
+  gitleaks:
+    desc: Run gitleaks secret detection
+    cmds:
+      - gitleaks detect --no-git --verbose
+
+  clean:
+    desc: Remove the compiled binaries
+    cmds:
+      - rm -f agmsg-viewer agmsg-viewer-win.exe agmsg-viewer-linux agmsg-viewer-mac
+
+  rebuild:
+    desc: Clean and rebuild
+    cmds:
+      - task: clean
+      - task: build
