@@ -4,6 +4,8 @@
 
 A tool to view agent-to-agent message history (SQLite database) recorded by [`fujibee/agmsg`](https://github.com/fujibee/agmsg) in a LINE-style chat interface via browser.
 
+![agmsg_capture.png](agmsg_capture.png)
+
 ## 🚀 User Guide
 
 ### Features

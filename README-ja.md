@@ -4,6 +4,8 @@
 
 `fujibee/agmsg` によって記録されたエージェント間のメッセージ履歴（SQLiteデータベース）を、LINE風のチャットインターフェースでブラウザから閲覧するためのツールです。
 
+![agmsg_capture.png](agmsg_capture.png)
+
 ## 🚀 ユーザーガイド
 
 ### 特徴
