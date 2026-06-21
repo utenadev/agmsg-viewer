@@ -16,7 +16,7 @@ A tool to view agent-to-agent message history (SQLite database) recorded by [`fu
 - **Portability**: Runs as a single Go binary with no external runtime dependencies.
 
 ### Installation & Launch
-Obtain a prebuilt binary or build from source.
+[Obtain a prebuilt binary from Releases](https://github.com/utenadev/agmsg-viewer/releases) or build from source.
 
 #### Launch Command
 ```bash
