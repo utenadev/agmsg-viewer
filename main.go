@@ -1,3 +1,4 @@
+// Package main implements a simple web viewer for agmsg messages stored in a SQLite database.
 package main
 
 import (
@@ -73,7 +74,9 @@ func main() {
     if err != nil {
         log.Fatalf("Failed to open database: %v", err)
     }
-    defer db.Close()
+    defer func() {
+        _ = db.Close()
+    }()
 
     http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
         indexHandler(w, r, *initialTeam)
@@ -87,13 +90,15 @@ func main() {
     log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), nil))
 }
 
-func indexHandler(w http.ResponseWriter, r *http.Request, initialTeam string) {
+func indexHandler(w http.ResponseWriter, _ *http.Request, initialTeam string) {
     rows, err := db.Query("SELECT DISTINCT team FROM messages ORDER BY team ASC")
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
-    defer rows.Close()
+    defer func() {
+        _ = rows.Close()
+    }()
 
     var teams []string
     for rows.Next() {
@@ -109,7 +114,9 @@ func indexHandler(w http.ResponseWriter, r *http.Request, initialTeam string) {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
-    t.Execute(w, struct{ Teams []string; InitialTeam string }{Teams: teams, InitialTeam: initialTeam})
+    if err := t.Execute(w, struct{ Teams []string; InitialTeam string }{Teams: teams, InitialTeam: initialTeam}); err != nil {
+        log.Printf("Template execution failed: %v", err)
+    }
 }
 
 func messagesHandler(w http.ResponseWriter, r *http.Request, limit int) {
@@ -120,7 +127,9 @@ func messagesHandler(w http.ResponseWriter, r *http.Request, limit int) {
 
     messages := fetchMessages(team, 0, limit)
     w.Header().Set("Content-Type", "text/html; charset=utf-8")
-    tpl.Execute(w, messages)
+    if err := tpl.Execute(w, messages); err != nil {
+        log.Printf("Template execution failed: %v", err)
+    }
 }
 
 func partialMessagesHandler(w http.ResponseWriter, r *http.Request) {
@@ -132,12 +141,14 @@ func partialMessagesHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     var lastID int
-    fmt.Sscanf(lastIDStr, "%d", &lastID)
+    _, _ = fmt.Sscanf(lastIDStr, "%d", &lastID)
 
     messages := fetchMessages(team, lastID, 0)
     if len(messages) > 0 {
         w.Header().Set("Content-Type", "text/html; charset=utf-8")
-        tpl.Execute(w, messages)
+        if err := tpl.Execute(w, messages); err != nil {
+            log.Printf("Template execution failed: %v", err)
+        }
     }
 }
 
@@ -177,7 +188,9 @@ func fetchMessages(team string, lastID int, limit int) []Message {
         log.Printf("Error querying messages for team %s: %v", team, err)
         return nil
     }
-    defer rows.Close()
+    defer func() {
+        _ = rows.Close()
+    }()
 
     var messages []Message
     for rows.Next() {
