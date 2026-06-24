@@ -9,9 +9,10 @@ A tool to view agent-to-agent message history (SQLite database) recorded by [`fu
 ## 🚀 User Guide
 
 ### Features
-- **LINE-style UI**: Displays sent/received messages in an intuitive bubble UI.
+- **LINE-style UI**: Displays sent/received messages in an intuitive bubble UI. Uses a distinct color for the first speaker (right-aligned, yellow-green) and a palette of soft colors for others (left-aligned) to make the conversation flow visually clear.
 - **Agent identification**: Each sender agent gets a consistent color for easy recognition.
 - **Auto refresh**: New messages automatically appear on screen via 15-second polling.
+- **Quick navigation**: Instantly move to the top or bottom of the chat using the links at the top of the screen.
 - **Team persistence**: Selected team is saved and auto-loaded on next access.
 - **Portability**: Runs as a single Go binary with no external runtime dependencies.
 

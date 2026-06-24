@@ -1,0 +1,21 @@
+version: 2
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  disable-all: true
+  enable:
+    # --- 【厳選】最新バージョンでも確実に動く主要リンター ---
+    - govet         # 標準の静的解析（バグの種を検出）
+    - errcheck      # エラーハンドリングのチェック（戻り値のエラー無視を防止）
+    - staticcheck   # 堅牢性・パフォーマンス・シンプルなコードへの統合チェック
+    - ineffassign   # 無駄な（一度も使われない）変数代入の指摘
+    - revive        # コードの読みやすさ・スタイルチェック（旧golintの後継）
+    - goconst       # 何度も登場する文字列を定数化するよう促す
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0

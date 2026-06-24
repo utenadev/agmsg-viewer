@@ -1,32 +1,63 @@
 {{define "msg"}}
+{{/* このレンダリングブロック内での「最初の発言者」を特定するために変数を定義します。
+  もしAPIが毎回差分だけを返す（partial）場合、厳密には「トークルームで最初の発言者」を
+  Goの構造体側（例: .IsFirstSpeaker）で持たせるのが最も確実です。
+  ここでは、このリストの先頭のFromAgentを「1番目の発言者」として扱う例を示します。
+*/}}
+{{$firstSpeaker := ""}}
+{{range $index, $element := .}}
+  {{if eq $index 0}}
+    {{$firstSpeaker = .FromAgent}}
+  {{end}}
+{{end}}
+
 {{range .}}
-<div class="message-row mb-4" data-id="{{.ID}}">
-  {{if .IsRight}}
-  <div class="flex justify-end items-end mr-0">
-    <div class="flex flex-col items-end mr-1.5">
+<div class="message-row mb-4 px-3" data-id="{{.ID}}">
+  
+  {{/* --- 1番目の発言者（右寄せ・緑フキダシ・アイコンあり） --- */}}
+  {{if eq .FromAgent $firstSpeaker}}
+  <div class="flex justify-end items-start gap-2">
+    <div class="flex flex-col justify-end h-full self-end mb-0.5">
       <span class="text-[10px] text-gray-200 whitespace-nowrap" title="{{.FullTime}}">{{.ShortTime}}</span>
     </div>
-    <div class="flex items-end gap-2">
-      <div class="bg-[#85e249] text-black p-2.5 rounded-2xl rounded-tr-none max-w-xs shadow-sm whitespace-pre-wrap break-words">{{- .Body -}}</div>
-      <div class="w-8 h-8 rounded-full flex-shrink-0 shadow flex items-center justify-center text-white font-bold text-xs {{avatarColor .FromAgent}}">
-        {{slice .FromAgent 0 1 | upper}}
+    
+    <div class="flex flex-col items-end">
+      <div class="text-xs text-white mb-1 opacity-80">{{.FromAgent}}{{if .ToAgent}} <span class="text-gray-200 font-normal">(To: {{.ToAgent}})</span>{{end}}</div>
+      <div class="bg-[#85e249] text-black p-2.5 rounded-2xl rounded-tr-none max-w-md shadow-sm whitespace-pre-wrap break-words">
+        {{- .Body -}}
       </div>
     </div>
-  </div>
-  {{else}}
-  <div class="flex items-start ml-4">
-    <div class="w-10 h-10 rounded-full mr-2 flex-shrink-0 shadow flex items-center justify-center text-white font-bold text-sm {{avatarColor .FromAgent}}">
+
+    <div class="w-9 h-9 rounded-full flex-shrink-0 shadow flex items-center justify-center text-white font-bold text-xs {{avatarColor .FromAgent}}">
       {{slice .FromAgent 0 1 | upper}}
     </div>
+  </div>
+
+  {{/* --- 2番目以降の発言者（左寄せ・異なる薄いフキダシ色） --- */}}
+  {{else}}
+  <div class="flex items-start">
+    <div class="w-9 h-9 rounded-full mr-2 flex-shrink-0 shadow flex items-center justify-center text-white font-bold text-sm {{avatarColor .FromAgent}}">
+      {{slice .FromAgent 0 1 | upper}}
+    </div>
+    
     <div>
-      <div class="text-xs text-white mb-1">{{.FromAgent}}{{if .ToAgent}} <span class="text-gray-200 font-normal">(To: {{.ToAgent}})</span>{{end}}</div>
-      <div class="flex items-end">
-        <div class="bg-[#ffffff] text-black p-2.5 rounded-2xl rounded-tl-none max-w-xs shadow-sm whitespace-pre-wrap break-words">{{- .Body -}}</div>
-        <span class="text-[10px] text-gray-200 ml-1.5 whitespace-nowrap" title="{{.FullTime}}">{{.ShortTime}}</span>
+      <div class="text-xs text-white mb-1 opacity-80">{{.FromAgent}}{{if .ToAgent}} <span class="text-gray-200 font-normal">(To: {{.ToAgent}})</span>{{end}}</div>
+      
+      <div class="flex items-end gap-1.5">
+        {{/* 発言者ごとにフキダシの色を薄い色で変えていくため、
+          既存の avatarColor を応用するか、以下のようにGo側から薄い背景色用のヘルパー関数 
+          (例: bubbleColor .FromAgent) を通すと、より実用的になります。
+          ここでは暫定的に、白〜薄グレー等のバリエーションを想定し、通常の白[#ffffff]にしています。
+        */}}
+        <div class="bg-[#ffffff] text-black p-2.5 rounded-2xl rounded-tl-none max-w-md shadow-sm whitespace-pre-wrap break-words">
+          {{- .Body -}}
+        </div>
+        <span class="text-[10px] text-gray-200 whitespace-nowrap mb-0.5" title="{{.FullTime}}">{{.ShortTime}}</span>
       </div>
     </div>
   </div>
   {{end}}
+
 </div>
 {{end}}
 {{end}}

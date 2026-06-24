@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Agmsg Viewer (LINE風)</title>
     <!-- htmx -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
@@ -17,31 +20,38 @@
 <body class="m-0 p-0 flex flex-col h-screen">
 
 <!-- Header -->
-<header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-6 shadow-sm sticky top-0 z-10">
+<header class="bg-white border-b border-b-gray-200 px-6 py-4 flex items-center gap-6 shadow-sm sticky top-0 z-10">
     <h1 class="text-xl font-bold text-gray-800">Agmsg Viewer</h1>
-    <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-600">Team:</label>
-        <select id="teamSelect" 
-                hx-get="/api/messages" 
-                hx-target="#chatBox" 
-                hx-swap="innerHTML"
-                name="team"
-                class="px-3 py-1.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Select Team</option>
-            {{range .Teams}}
-            <option value="{{.}}" {{if eq . $.InitialTeam}}selected{{end}}>{{.}}</option>
-            {{end}}
-        </select>
+    <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 text-xs">
+            <a href="javascript:void(0)" onclick="scrollToTop()" class="text-blue-600 hover:underline">TOP</a>
+            <span>&rarr;</span>
+            <a href="javascript:void(0)" onclick="scrollToBottom()" class="text-blue-600 hover:underline">BOTTOM</a>
+        </div>
+        <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-600">Team:</label>
+            <select id="teamSelect" 
+                    hx-get="/api/messages" 
+                    hx-target="#chatBox" 
+                    hx-swap="innerHTML"
+                    name="team"
+                    class="px-3 py-1.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Select Team</option>
+                {{range .Teams}}
+                <option value="{{.}}" {{if eq . $.InitialTeam}}selected{{end}}>{{.}}</option>
+                {{end}}
+            </select>
+        </div>
     </div>
 </header>
 
 <!-- Chat Container (LINE風背景色) -->
-<main class="flex-1 overflow-y-auto bg-[#7493c0] font-sans text-sm">
+<main id="mainContainer" class="flex-1 overflow-y-auto bg-[#7493c0] font-sans text-sm">
     <div id="chatBox"
          hx-get="/api/messages/partial"
          hx-trigger="every 15s"
          hx-swap="beforeend"
-         class="flex flex-col h-full py-4">
+         class="flex flex-col pt-4 pb-12">
         <div class="text-center text-white mt-20">
             <p class="font-semibold">チームを選択してください</p>
         </div>
@@ -49,6 +59,17 @@
 </main>
 
 <script>
+    // スクロール関数
+    function scrollToTop() {
+        const main = document.getElementById('mainContainer');
+        main.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function scrollToBottom() {
+        const main = document.getElementById('mainContainer');
+        main.scrollTo({ top: main.scrollHeight, behavior: 'smooth' });
+    }
+
     // チーム選択時にCookieを保存
     document.getElementById('teamSelect').addEventListener('change', function(e) {
         const team = e.target.value;
@@ -67,14 +88,6 @@
             } else {
                 evt.detail.parameters['last_id'] = 0;
             }
-        }
-    });
-
-    // ポーリングが成功した後に呼ばれるイベント（自動スクロール用）
-    document.body.addEventListener('htmx:afterRequest', function(evt) {
-        if (evt.detail.successful && evt.detail.path.includes('/api/messages')) {
-            const main = document.querySelector('main');
-            main.scrollTo({ top: main.scrollHeight, behavior: 'smooth' });
         }
     });
 
