@@ -11,6 +11,12 @@
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Humation Avatar -->
+    <script type="module">
+        import { defineAvatarElement } from "https://esm.sh/@humation/web-component@1.0.1";
+        import humation1 from "https://esm.sh/@humation/assets-humation-1@1.0.1";
+        defineAvatarElement(humation1);
+    </script>
     <style>
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
@@ -30,9 +36,9 @@
         </div>
         <div class="flex items-center gap-2">
             <label class="text-sm text-gray-600">Team:</label>
-            <select id="teamSelect" 
-                    hx-get="/api/messages" 
-                    hx-target="#chatBox" 
+            <select id="teamSelect"
+                    hx-get="/api/messages"
+                    hx-target="#chatBox"
                     hx-swap="innerHTML"
                     name="team"
                     class="px-3 py-1.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -59,7 +65,6 @@
 </main>
 
 <script>
-    // スクロール関数
     function scrollToTop() {
         const main = document.getElementById('mainContainer');
         main.scrollTo({ top: 0, behavior: 'smooth' });
@@ -70,18 +75,16 @@
         main.scrollTo({ top: main.scrollHeight, behavior: 'smooth' });
     }
 
-    // チーム選択時にCookieを保存
     document.getElementById('teamSelect').addEventListener('change', function(e) {
         const team = e.target.value;
-        document.cookie = "selected_team=" + encodeURIComponent(team) + "; path=/; max-age=2592000"; // 30日間有効
+        document.cookie = "selected_team=" + encodeURIComponent(team) + "; path=/; max-age=2592000";
     });
 
-    // htmxがリクエストを送信する直前に呼ばれるイベント
     document.body.addEventListener('htmx:configRequest', function(evt) {
         if (evt.detail.path.includes('/api/messages/partial')) {
             const team = document.getElementById('teamSelect').value;
             evt.detail.parameters['team'] = team;
-            
+
             const messages = document.querySelectorAll('.message-row');
             if (messages.length > 0) {
                 evt.detail.parameters['last_id'] = messages[messages.length - 1].dataset.id;
@@ -91,7 +94,17 @@
         }
     });
 
-    // 初期ロード時にチームが選択されていれば自動的にメッセージを取得
+    // Auto-scroll to bottom on new messages (only if already at bottom)
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target && evt.detail.target.id === 'chatBox') {
+            const main = document.getElementById('mainContainer');
+            const atBottom = main.scrollTop + main.clientHeight >= main.scrollHeight - 50;
+            if (atBottom) {
+                main.scrollTo({ top: main.scrollHeight, behavior: 'smooth' });
+            }
+        }
+    });
+
     window.addEventListener('DOMContentLoaded', () => {
         const teamSelect = document.getElementById('teamSelect');
         if (teamSelect.value) {

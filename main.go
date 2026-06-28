@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -76,9 +77,13 @@ func main() {
 	initialTeam := flag.String("team", "", "Initial team to select on load")
 	flag.Parse()
 
-	dbPath = *dbPathFlag
+	// Resolve dbPath to absolute path to avoid CWD-dependent behavior
+	absDbPath, err := filepath.Abs(*dbPathFlag)
+	if err != nil {
+		log.Fatalf("Failed to resolve database path: %v", err)
+	}
+	dbPath = absDbPath
 	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)", dbPath)
-	var err error
 	db, err = sql.Open("sqlite", dsn)
 	if err != nil {
 		log.Fatalf("Failed to open database: %v", err)
